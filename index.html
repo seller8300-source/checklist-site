@@ -16,9 +16,7 @@
 <body>
   <div id="root"></div>
   <script>
-    window.onerror = function(msg, url, line) {
-      document.getElementById('root').innerHTML = '<div style="padding:20px;color:red;font-size:13px"><b>오류</b><br>' + msg + '<br>라인: ' + line + '</div>';
-    };
+    window.onerror = function(msg,url,line){document.getElementById('root').innerHTML='<div style="padding:20px;color:red">오류: '+msg+'<br>라인: '+line+'</div>';};
   </script>
   <script type="text/babel">
     const { useState, useRef, useEffect } = React;
@@ -108,17 +106,10 @@ const EVIDENCE_ITEM_IDS = [14, 16];
 const DUAL_MODE_ITEM_IDS = [13];
 
 async function callClaude(prompt, systemMsg) {
-  const sysPrefix = systemMsg
-    ? systemMsg + "\n\n"
-    : "마케팅 영상 심사 전문가. 반드시 순수 JSON 객체만 출력. 설명 텍스트, 코드블록 마크다운 절대 금지.\n\n";
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/analysis", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      model:"claude-sonnet-4-20250514",
-      max_tokens:2000,
-      messages:[{role:"user", content: sysPrefix + prompt}]
-    }),
+    body: JSON.stringify({ prompt, systemMsg }),
   });
   if (!res.ok) {
     let m=`HTTP ${res.status}`;
