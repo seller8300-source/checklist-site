@@ -101,17 +101,10 @@ const EVIDENCE_ITEM_IDS = [14, 16];
 const DUAL_MODE_ITEM_IDS = [13];
 
 async function callClaude(prompt, systemMsg) {
-  const sysPrefix = systemMsg
-    ? systemMsg + "\n\n"
-    : "마케팅 영상 심사 전문가. 반드시 순수 JSON 객체만 출력. 설명 텍스트, 코드블록 마크다운 절대 금지.\n\n";
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/analysis", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      model:"claude-sonnet-4-20250514",
-      max_tokens:2000,
-      messages:[{role:"user", content: sysPrefix + prompt}]
-    }),
+    body: JSON.stringify({ prompt, systemMsg }),
   });
   if (!res.ok) {
     let m=`HTTP ${res.status}`;
@@ -1057,13 +1050,11 @@ function BgKnowledgeInput({ bgKnowledge, bgFileName, setBgKnowledge, setBgFileNa
     }
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1500,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          useWebSearch: true,
           messages: [{ role: "user", content: `다음 URL을 방문해서 마케팅 배경지식으로 활용할 수 있는 핵심 정보를 정리해주세요: ${urlInput.trim()}\n\n정리 항목:\n- 회사/브랜드명\n- 주요 제품/서비스 및 특징\n- 구체적 수치 (연혁, 실적, 규모, 인증 등)\n- USP (차별화 포인트)\n- 고객 후기나 사례\n\n500자 이내로 핵심만 정리하세요.` }]
         })
       });
