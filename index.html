@@ -15,6 +15,11 @@
 </head>
 <body>
   <div id="root"></div>
+  <script>
+    window.onerror = function(msg, url, line, col, err) {
+      document.getElementById('root').innerHTML = '<div style="padding:20px;color:red;font-size:13px;word-break:break-all"><b>렌더링 오류</b><br>' + msg + '<br>라인: ' + line + '</div>';
+    };
+  </script>
   <script type="text/babel">
     const { useState, useRef, useEffect } = React;
 
@@ -1050,11 +1055,13 @@ function BgKnowledgeInput({ bgKnowledge, bgFileName, setBgKnowledge, setBgFileNa
     }
 
     try {
-      const res = await fetch("/api/analysis", {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          useWebSearch: true,
+          model: "claude-sonnet-4-6",
+          max_tokens: 1500,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
           messages: [{ role: "user", content: `다음 URL을 방문해서 마케팅 배경지식으로 활용할 수 있는 핵심 정보를 정리해주세요: ${urlInput.trim()}\n\n정리 항목:\n- 회사/브랜드명\n- 주요 제품/서비스 및 특징\n- 구체적 수치 (연혁, 실적, 규모, 인증 등)\n- USP (차별화 포인트)\n- 고객 후기나 사례\n\n500자 이내로 핵심만 정리하세요.` }]
         })
       });
@@ -1181,7 +1188,7 @@ function BgKnowledgeInput({ bgKnowledge, bgFileName, setBgKnowledge, setBgFileNa
   );
 }
 
-export default function App() {
+function App() {
   const [step,setStep]=useState(0);
   const [purpose,setPurpose]=useState(null);
   const [inputMode,setInputMode]=useState(null);
@@ -1894,8 +1901,8 @@ JSON만 반환 (reason/aiRewrite 최대 30자):
 }
 
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(App));
+    const domRoot = ReactDOM.createRoot(document.getElementById('root'));
+    domRoot.render(React.createElement(App));
   </script>
 </body>
 </html>
