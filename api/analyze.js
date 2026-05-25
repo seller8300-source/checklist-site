@@ -1,9 +1,13 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     const { prompt, systemMsg } = req.body;
-
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -14,14 +18,13 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 4000,
-        system: systemMsg || '마케팅 영상 심사 전문가. 반드시 순수 JSON 객체만 출력. 설명 텍스트, 코드블록 마크다운 절대 금지.',
+        system: systemMsg || '마케팅 영상 심사 전문가. 반드시 순수 JSON 객체만 출력.',
         messages: [{ role: 'user', content: prompt }]
       })
     });
-
     const data = await response.json();
     res.status(200).json(data);
   } catch (e) {
     res.status(500).json({ error: { message: e.message } });
   }
-}
+};
