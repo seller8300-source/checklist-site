@@ -16,8 +16,8 @@
 <body>
   <div id="root"></div>
   <script>
-    window.onerror = function(msg, url, line, col, err) {
-      document.getElementById('root').innerHTML = '<div style="padding:20px;color:red;font-size:13px;word-break:break-all"><b>렌더링 오류</b><br>' + msg + '<br>라인: ' + line + '</div>';
+    window.onerror = function(msg, url, line) {
+      document.getElementById('root').innerHTML = '<div style="padding:20px;color:red;font-size:13px"><b>오류</b><br>' + msg + '<br>라인: ' + line + '</div>';
     };
   </script>
   <script type="text/babel">
@@ -70,6 +70,8 @@ const CSS = `
   body { font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; background: #fff; color: #111; -webkit-font-smoothing: antialiased; }
   .ci-row { padding: 12px 0; border-bottom: 1px solid #F2F2F2; }
   .ci-row:last-child { border-bottom: none; }
+  .script-editor-textarea::selection { background: #FFE566 !important; color: #111; }
+  .script-editor-textarea::-webkit-selection { background: #FFE566 !important; color: #111; }
   .cat-card { margin-bottom: 6px; border: 1px solid #EBEBEB; border-radius: 12px; overflow: hidden; background: #fff; }
   .cat-head { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; cursor: pointer; user-select: none; background: #FAFAFA; border-bottom: 1px solid #EBEBEB; }
   .cat-head-left { display: flex; align-items: center; gap: 8px; }
@@ -106,10 +108,17 @@ const EVIDENCE_ITEM_IDS = [14, 16];
 const DUAL_MODE_ITEM_IDS = [13];
 
 async function callClaude(prompt, systemMsg) {
-  const res = await fetch("/api/analysis", {
+  const sysPrefix = systemMsg
+    ? systemMsg + "\n\n"
+    : "마케팅 영상 심사 전문가. 반드시 순수 JSON 객체만 출력. 설명 텍스트, 코드블록 마크다운 절대 금지.\n\n";
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ prompt, systemMsg }),
+    body: JSON.stringify({
+      model:"claude-sonnet-4-20250514",
+      max_tokens:2000,
+      messages:[{role:"user", content: sysPrefix + prompt}]
+    }),
   });
   if (!res.ok) {
     let m=`HTTP ${res.status}`;
@@ -164,7 +173,25 @@ async function regenScriptItem(item, pdLabel, catName, bgKnowledge) {
   const bgNote = bgKnowledge ? `\n배경지식:\n${bgKnowledge.substring(0,600)}` : "";
 
   let catInstruction = "";
-  if (catName?.includes("구조")) {
+  if (item.id === 5) {
+    catInstruction = `[추상적 표현 → 구체적 수치 교체 — 원문 구조 유지 필수]
+규칙: 원문 문장의 의미와 구조를 유지하면서, 추상적 표현만 구체적 숫자로 교체.
+
+원문: "${item.orig || '(원문 없음)'}"
+
+교체 대상 추상 표현: "정말", "많이", "엄청", "굉장히", "아주", "진짜", "훨씬", "더", "매우"
+교체 방식 예시:
+- "진짜 많이 보이시죠" → "10곳 중 7곳에서 보이시죠" (수치 교체)
+- "훨씬 빨라요" → "기존 대비 3배 빠릅니다"
+- "정말 가벼워요" → "무게 3kg, 기존 타일의 절반이에요"
+
+⛔ 절대 금지:
+- 원문 주제/맥락 변경 금지 (카페 얘기면 카페로 유지)
+- 새로운 내용 추가 금지
+- "눈치채셨어요?" 같은 완전히 다른 문장 생성 금지
+- 또 다른 추상 표현 사용 금지
+
+aiRewrite: 원문에서 추상 표현만 숫자로 바꾼 버전. 숫자 반드시 포함.`;
     catInstruction = `[구조 카테고리]
 이 항목은 대본의 전체 흐름/순서에 관한 것.
 퍼널 구조 적용: WIDE HOOK(넓은표본 감정 트리거) → 공통기준 → 좁히기(제품 연결) → 핵심+CTA
@@ -730,7 +757,7 @@ function CatSection({ cat, allItems, pdLabel, bgKnowledge, accepted, acceptedTxt
 }
 
 // ✅ 대본 직접 수정 편집창 - 수동 추가 내용 붙여넣거나 직접 수정 + 되돌리기
-function ScriptEditor({ script, setScript, onSave, onScrollToLast, appendText, clearAppend, forceOpen, clearForceOpen, pendingPasteText, clearPending }) {
+function ScriptEditor({ script, setScript, onSave, onScrollToLast, appendText, clearAppend, forceOpen, clearForceOpen, pendingPasteText, clearPending, pendingLabel, highlightText, clearHighlight, highlightLine }) {
   const [open, setOpen] = useState(false);
   const [editText, setEditText] = useState(script);
   const [history, setHistory] = useState([]); // 되돌리기용 이전 대본 스택
@@ -750,6 +777,30 @@ function ScriptEditor({ script, setScript, onSave, onScrollToLast, appendText, c
     }
   }, [appendText]);
 
+
+
+  const [changedText, setChangedText] = useState("");
+  const [changedLine, setChangedLine] = useState(null);
+
+  // ✅ 채택 후 변경된 텍스트 노란 배너로 표시 + 해당 위치로 자동 스크롤
+  React.useEffect(() => {
+    if (highlightText && script.includes(highlightText)) {
+      setEditText(script);
+      setOpen(true);
+      setChangedText(highlightText);
+      setChangedLine(highlightLine || null);
+      if (clearHighlight) clearHighlight();
+      setTimeout(() => {
+        if (textareaRef.current) {
+          const idx = script.indexOf(highlightText);
+          const linesAbove = script.substring(0, idx).split('\n').length;
+          const lineHeight = 22;
+          textareaRef.current.scrollTop = Math.max(0, (linesAbove - 4) * lineHeight);
+          textareaRef.current.focus();
+        }
+      }, 200);
+    }
+  }, [highlightText]);
 
   // ✅ forceOpen: 채택 실패 시 편집창만 열기 (텍스트 append 없음, 클립보드에서 붙여넣기)
   React.useEffect(() => {
@@ -810,27 +861,57 @@ function ScriptEditor({ script, setScript, onSave, onScrollToLast, appendText, c
       </div>
       {open && (
         <div style={{padding:"12px 16px"}}>
-          {/* ✅ 붙여넣기 대기 텍스트 배너 */}
+          {/* ✅ 변경된 텍스트 노란 배너 - 줄 번호 + 위치로 이동 */}
+          {changedText && (
+            <div style={{marginBottom:10,background:"#FFE566",borderRadius:8,padding:"8px 12px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                <span style={{fontSize:10,color:"#7A6000",fontWeight:600}}>
+                  ✏ 방금 변경됨{changedLine ? ` — ${changedLine}번째 줄` : ""}
+                </span>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <button onClick={()=>{
+                    if (textareaRef.current) {
+                      const text = editText || script;
+                      const idx = text.indexOf(changedText);
+                      if (idx !== -1) {
+                        textareaRef.current.focus();
+                        textareaRef.current.setSelectionRange(idx, idx + changedText.length);
+                      }
+                    }
+                  }} style={{fontSize:10,padding:"2px 8px",background:"#7A6000",color:"#fff",border:"none",borderRadius:4,cursor:"pointer"}}>
+                    위치로 이동 ↓
+                  </button>
+                  <button onClick={()=>{setChangedText("");setChangedLine(null);}}
+                    style={{fontSize:14,color:"#7A6000",background:"transparent",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1}}>✕</button>
+                </div>
+              </div>
+              <div style={{fontSize:12,color:"#333",lineHeight:1.6,wordBreak:"break-all"}}>{changedText}</div>
+            </div>
+          )}
           {pendingPasteText && (
-            <div style={{marginBottom:10,border:"1.5px solid #534AB7",borderRadius:8,overflow:"hidden"}}>
-              <div style={{padding:"7px 12px",background:"#EEEDFE",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:11,fontWeight:600,color:"#534AB7"}}>📋 아래 내용을 복사해서 편집창 원하는 위치에 붙여넣기 하세요</span>
-                <button onClick={()=>{
-                  const el=document.createElement('textarea');
-                  el.value=pendingPasteText;
-                  el.style.cssText='position:fixed;opacity:0;top:0;left:0';
-                  document.body.appendChild(el);
-                  el.focus();el.select();
-                  document.execCommand('copy');
-                  document.body.removeChild(el);
-                  clearPending();
-                }} style={{fontSize:11,padding:"3px 10px",background:"#534AB7",color:"#fff",border:"none",borderRadius:5,cursor:"pointer",fontWeight:500}}>
-                  복사
-                </button>
+            <div style={{marginBottom:10,background:"#FFE566",borderRadius:8,padding:"8px 12px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                <span style={{fontSize:10,color:"#7A6000",fontWeight:600}}>
+                  📌 {pendingLabel ? `[${pendingLabel}] 대본에 없음` : "새로 추가 필요"} — 복사 후 원하는 위치에 붙여넣기
+                </span>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <button onClick={()=>{
+                    const el=document.createElement('textarea');
+                    el.value=pendingPasteText;
+                    el.style.cssText='position:fixed;opacity:0;top:0;left:0';
+                    document.body.appendChild(el);
+                    el.focus();el.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(el);
+                    clearPending();
+                  }} style={{fontSize:10,padding:"2px 8px",background:"#7A6000",color:"#fff",border:"none",borderRadius:4,cursor:"pointer",fontWeight:500}}>
+                    복사
+                  </button>
+                  <button onClick={clearPending}
+                    style={{fontSize:14,color:"#7A6000",background:"transparent",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1}}>✕</button>
+                </div>
               </div>
-              <div style={{padding:"8px 12px",fontSize:13,color:"#333",lineHeight:1.7,background:"#fff"}}>
-                {pendingPasteText}
-              </div>
+              <div style={{fontSize:12,color:"#333",lineHeight:1.6,wordBreak:"break-all"}}>{pendingPasteText}</div>
             </div>
           )}
           <div style={{fontSize:11,color:"#6B7280",marginBottom:8,lineHeight:1.6,background:"#F3F4F6",padding:"8px 10px",borderRadius:7}}>
@@ -838,7 +919,8 @@ function ScriptEditor({ script, setScript, onSave, onScrollToLast, appendText, c
             <strong>되돌리기</strong>로 언제든 이전 대본으로 복구 가능해요.
           </div>
           <textarea ref={textareaRef} value={editText} onChange={e=>setEditText(e.target.value)}
-            style={{width:"100%",height:200,resize:"vertical",fontSize:13,lineHeight:1.8,fontFamily:"inherit",padding:10,border:"1px solid #E5E7EB",borderRadius:8,outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+            style={{width:"100%",height:200,resize:"vertical",fontSize:13,lineHeight:1.8,fontFamily:"inherit",padding:10,border:"1px solid #E5E7EB",borderRadius:8,outline:"none",boxSizing:"border-box",marginBottom:10,caretColor:"#111"}}
+            className="script-editor-textarea"/>
           <div style={{display:"flex",gap:8}}>
             <button onClick={handleSave} disabled={!editText.trim()}
               style={{flex:1,padding:"9px",fontSize:13,fontWeight:500,background:saved?"#16A34A":editText.trim()?"#111":"#ccc",color:"#fff",border:"none",borderRadius:8,cursor:editText.trim()?"pointer":"not-allowed",transition:"background .2s"}}>
@@ -1210,7 +1292,11 @@ function App() {
   const [acceptToast,setAcceptToast]=useState("");
   const [forceEditorOpen,setForceEditorOpen]=useState(false);
   const [pendingPasteText,setPendingPasteText]=useState("");
+  const [pendingLabel,setPendingLabel]=useState("");
   const [lastEditedItemId,setLastEditedItemId]=useState(null);
+  const [highlightText,setHighlightText]=useState("");
+  const [highlightLine,setHighlightLine]=useState(null);
+  const [originalScript,setOriginalScript]=useState(""); // 분석 시점의 원본 (변경 불가)
   const [videoLoading,setVideoLoading]=useState(false);
   const [driveUrl,setDriveUrl]=useState("");
 
@@ -1413,6 +1499,7 @@ JSON만 반환: {"purpose":"sales","reason":"이유 25자 이내"}`);
   async function runAnalysis(){
     if(!script.trim()){setErrMsg("대본을 입력해주세요.");return;}
     setErrMsg("");setLoading(true);
+    setOriginalScript(script); // ✅ 분석 시점 원본 저장 (이후 변경 안 됨)
     const msgs=["대본 분석 중...","체크리스트 적용 중...","카피 평가 중...","심리 기법 카피 생성 중..."];
     let mi=0;setLoadTxt(msgs[0]);
     const lt=setInterval(()=>{mi=(mi+1)%msgs.length;setLoadTxt(msgs[mi]);},1600);
@@ -1441,7 +1528,14 @@ ${pd?.critical?`항목 ${pd.critical}번 미통과→자동반려.`:""}
 - 있으면 미흡 → orig에 해당 추상 표현이 포함된 문장 넣기
 - aiRewrite: 그 문장에서 추상 표현을 구체적 수치로 교체. 예) "관리가 정말 편해요" → "관리 시간 주 3회→0회로 줄어들어요"
 - 추상 표현 전혀 없고 이미 수치가 있으면 통과
-[항목 11] USP 직접 세어 평가. 3개 이상이면 통과.
+[항목 11 - USP 최소 3개]
+USP = 제품/서비스의 장점, 특징, 셀링포인트 모두 포함. 아래 모두 USP로 카운트:
+- 소재/재질 특성 (휘어짐, 방수, 준불연 등)
+- 시공 장점 (빠름, 쉬움, 경량 등)
+- 인증/수상 (준불연인증, KC인증 등)
+- 가격/비용 장점
+- 디자인/미적 특성
+명시적으로 언급된 것만 카운트. 대본에서 직접 세어 3개 이상이면 통과. 엄격하게 세지 말 것.
 [항목 14] 고객 후기·전후 비교·수치 중 하나라도 있으면 통과.
 [항목 16] 브랜드 공신력만 (업력·고객수·수상·인증). 제품 스펙/기능 언급 금지.
 [항목 17] orig: 빠진 구조 요소 명시. aiRewrite: 구조 가이드만.
@@ -1491,9 +1585,9 @@ JSON만 반환 (reason/aiRewrite 최대 30자):
           const origTrim = item.orig?.trim();
           const label = getAllItems()[item.id] || "";
 
-          // orig 없거나 가이드 텍스트 → 수동 추가 목록으로
+          // orig 없거나 가이드 텍스트 → 이미 대본에 있으면 skip, 없으면 수동 추가 목록
           if (!origTrim || origTrim.startsWith("(") || isGuidance(txt)) {
-            if (txt) manualItems.push({ label, text: txt });
+            if (txt && !updated.includes(txt)) manualItems.push({ label, text: txt });
             return;
           }
 
@@ -1533,7 +1627,7 @@ JSON만 반환 (reason/aiRewrite 최대 30자):
 
 [언어 기준 항목 6·7] 업계 표준 용어 허용.
 [항목 5] 추상 표현("정말","많이","엄청","굉장히","아주" 등) 있으면 미흡 → orig에 해당 문장, aiRewrite에 수치로 교체한 버전. 수치 이미 있으면 통과.
-[항목 11] USP 직접 세어 평가.
+[항목 11] USP = 제품 장점·특징·셀링포인트 모두. 소재/시공/인증/가격/디자인 특성 포함. 명시된 것 직접 세어 3개 이상이면 통과. 엄격하게 세지 말 것.
 [항목 14] 고객 후기·전후 비교·수치 중 하나라도 있으면 통과.
 [항목 16] 제품스펙/기능/인증 금지. 회사 전체 업력·누적건수·매출·미디어만. 배경지식 기반만.
 [항목 17] orig: 빠진 구조 요소. aiRewrite: 구조 가이드만.
@@ -1608,7 +1702,13 @@ JSON만 반환 (reason/aiRewrite 최대 30자):
             <div style={{background:vB[result.verdict],borderRadius:10,padding:"1rem",textAlign:"center",display:"flex",flexDirection:"column",justifyContent:"center"}}>
               <div style={{fontSize:12,color:vC[result.verdict],marginBottom:5}}>컨펌 결과</div>
               <div style={{fontSize:15,fontWeight:500,color:vC[result.verdict]}}>{result.verdict==="pass"?"✓":result.verdict==="revise"?"△":"✕"} {vL[result.verdict]}</div>
-              {result.verdict==="reject"&&<div style={{fontSize:11,color:"#A32D2D",marginTop:4}}>반려 기준 항목 미포함</div>}
+              {result.verdict==="reject"&&pd?.critical&&(
+                <div style={{fontSize:11,color:"#A32D2D",marginTop:6,lineHeight:1.5}}>
+                  필수 항목 미포함<br/>
+                  <span style={{fontWeight:500}}>"{getAllItems()[pd.critical]}"</span><br/>
+                  <span style={{color:"#888",fontSize:10}}>(점수와 무관하게 반드시 포함 필요)</span>
+                </div>
+              )}
             </div>
           </div>
           {/* ✅ 제외 남용 경고 */}
@@ -1624,7 +1724,7 @@ JSON만 반환 (reason/aiRewrite 최대 30자):
             </div>
           )}
           {updatedScript&&round===2&&(
-            <DiffView original={script} updated={updatedScript} changes={diffChanges} manualItems={manualItems}/>
+            <DiffView original={originalScript} updated={updatedScript} changes={diffChanges} manualItems={manualItems}/>
           )}
           {excCount>0&&<div style={{border:"0.5px solid #F0CC66",borderRadius:12,padding:"10px 14px",marginBottom:"1rem",background:"#FFFBEB"}}><div style={{fontSize:13,fontWeight:500,marginBottom:6,color:"#854F0B"}}>— 제외 처리된 항목 ({excCount}개)</div>{Object.entries(excluded).map(([id,reason])=><div key={id} style={{fontSize:12,color:"#888",display:"flex",gap:8,marginBottom:3}}><span style={{color:"#854F0B"}}>—</span><span>{getAllItems()[id]} <span style={{color:"#aaa"}}>({reason})</span></span></div>)}</div>}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:"1.25rem"}}>
@@ -1647,45 +1747,69 @@ JSON만 반환 (reason/aiRewrite 최대 30자):
               onAccept={(id,text,orig)=>{
                 setAccepted(p=>({...p,[id]:true}));
                 setAcceptedTxts(p=>({...p,[id]:text}));
-                setLastEditedItemId(id); // 마지막 수정 위치 추적
+                setLastEditedItemId(id);
 
                 const origTrim = orig?.trim();
                 let replaced = false;
 
-                // ✅ 매칭 시도 1: 정확한 매칭
                 if (origTrim && !origTrim.startsWith("(") && script.includes(origTrim)) {
                   setScript(s => s.replace(origTrim, text));
                   replaced = true;
                 }
 
-                // ✅ 매칭 시도 2: 공백 정규화 후 매칭
                 if (!replaced && origTrim) {
                   const normalized = origTrim.replace(/\s+/g,' ');
                   const scriptNorm = script.replace(/\s+/g,' ');
                   if (scriptNorm.includes(normalized)) {
-                    const idx = scriptNorm.indexOf(normalized);
-                    // 원본 script에서 해당 위치 교체
-                    let charCount = 0, startIdx = 0;
-                    for (let i = 0; i < script.length; i++) {
-                      if (script[i] !== ' ' || scriptNorm[charCount] === ' ') {
-                        if (charCount === idx) { startIdx = i; break; }
-                        charCount++;
-                      }
-                    }
                     setScript(s => s.replace(normalized, text));
                     replaced = true;
                   }
                 }
 
                 if (replaced) {
+                  // 변경 위치(줄번호) 계산
+                  const idx = script.indexOf(origTrim || "");
+                  const lineNum = idx !== -1 ? script.substring(0, idx).split('\n').length : null;
+                  setHighlightText(text);
+                  setHighlightLine(lineNum);
                   setAcceptToast("✓ 대본에 반영됐어요");
                   setTimeout(()=>setAcceptToast(""), 2000);
                 } else {
-                  // 매칭 실패: 편집창 열고 붙여넣기 안내 텍스트 표시
-                  setPendingPasteText(text);
-                  setForceEditorOpen(true);
-                  setAcceptToast("✏ 편집창 상단에서 복사 후 원하는 위치에 붙여넣기 하세요");
-                  setTimeout(()=>setAcceptToast(""), 4000);
+                  // orig 없음 → 항목 유형에 따라 스마트 삽입
+                  const isOpening = [1,2].includes(id); // 후킹/도입 → 앞에
+                  const isCTA = id === 18; // CTA → 맨 끝
+                  const isUrgency = id === 13; // 긴급성 → CTA 바로 앞
+                  
+                  let newScript = script;
+                  let insertedIdx = -1;
+
+                  if (isOpening) {
+                    newScript = text + "\n\n" + script;
+                    insertedIdx = 0;
+                  } else if (isUrgency) {
+                    // CTA가 있으면 CTA 바로 앞, 없으면 끝
+                    const ctaItem = result?.parsedItems?.find(i => i.id === 18);
+                    const ctaOrig = ctaItem?.orig?.trim();
+                    if (ctaOrig && script.includes(ctaOrig)) {
+                      newScript = script.replace(ctaOrig, text + "\n\n" + ctaOrig);
+                      insertedIdx = script.indexOf(ctaOrig);
+                    } else {
+                      newScript = script + "\n\n" + text;
+                      insertedIdx = script.length;
+                    }
+                  } else {
+                    // 나머지 → 끝에 추가
+                    newScript = script + "\n\n" + text;
+                    insertedIdx = script.length;
+                  }
+
+                  setScript(newScript);
+                  const lineNum = insertedIdx !== -1 ? newScript.substring(0, insertedIdx).split('\n').length + 1 : null;
+                  setHighlightText(text);
+                  setHighlightLine(lineNum);
+                  const posLabel = isOpening ? "앞" : isUrgency ? "CTA 앞" : "끝";
+                  setAcceptToast(`✓ 대본 ${posLabel}에 추가됐어요`);
+                  setTimeout(()=>setAcceptToast(""), 2000);
                 }
               }}
               onExclude={(id,reason)=>setExcluded(p=>({...p,[id]:reason}))}
@@ -1706,7 +1830,10 @@ JSON만 반환 (reason/aiRewrite 최대 30자):
           <ScriptEditor script={script} setScript={setScript}
             appendText={appendText} clearAppend={()=>setAppendText("")}
             forceOpen={forceEditorOpen} clearForceOpen={()=>setForceEditorOpen(false)}
-            pendingPasteText={pendingPasteText} clearPending={()=>setPendingPasteText("")}
+            pendingPasteText={pendingPasteText} clearPending={()=>{setPendingPasteText("");setPendingLabel("");}}
+            pendingLabel={pendingLabel}
+            highlightText={highlightText} clearHighlight={()=>setHighlightText("")}
+            highlightLine={highlightLine}
             onSave={()=>{setDiffChanges([]);setUpdatedScript("");}}
             onScrollToLast={()=>{
               if (lastEditedItemId) {
@@ -1784,81 +1911,25 @@ JSON만 반환 (reason/aiRewrite 최대 30자):
                 <button key={k} onClick={()=>setInputMode(k)} style={{flex:1,padding:"10px 8px",fontSize:12,border:`1.5px solid ${inputMode===k?"#111":"#e5e5e5"}`,background:inputMode===k?"#111":"#fff",color:inputMode===k?"#fff":"#555",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"}}>
                   <span style={{fontSize:18}}>{icon}</span>
                   <span style={{fontWeight:500}}>{label}</span>
-                  <span style={{fontSize:10,color:inputMode===k?"rgba(255,255,255,0.7)":k==="script"?"#3B6D11":"#888"}}>{sub}</span>
+                  <span style={{fontSize:10,color:inputMode===k?"rgba(255,255,255,0.7)":"#3B6D11"}}>{sub}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 영상 업로드 모드 */}
-          {inputMode==="video" && (
-            <div style={{marginBottom:14}}>
-              {videoLoading ? (
-                <div style={{textAlign:"center",padding:"2rem",background:"#f5f5f5",borderRadius:10}}>
-                  <div style={{fontSize:20,marginBottom:8}}>🎬</div>
-                  <div style={{fontSize:13,color:"#888"}}>영상에서 대본 추출 중...</div>
-                  <div style={{fontSize:11,color:"#aaa",marginTop:4}}>30초~2분 정도 걸릴 수 있어요</div>
-                </div>
-              ) : script ? (
-                <div style={{padding:"10px 12px",background:"#EAF3DE",borderRadius:8,fontSize:12,color:"#3B6D11",marginBottom:8}}>
-                  ✓ 대본 추출 완료! 아래에서 확인 후 분석 시작하세요.
-                </div>
-              ) : (
-                <label style={{display:"block",border:"2px dashed #ddd",borderRadius:10,padding:"2rem",textAlign:"center",cursor:"pointer",background:"#fafafa"}}
-                  onDragOver={e=>e.preventDefault()}
-                  onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('video/'))extractFromVideo(f);}}>
-                  <input type="file" accept="video/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&extractFromVideo(e.target.files[0])}/>
-                  <div style={{fontSize:28,marginBottom:8}}>🎬</div>
-                  <div style={{fontSize:13,fontWeight:500,marginBottom:4}}>영상 파일을 끌어다 놓거나 클릭해서 선택</div>
-                  <div style={{fontSize:11,color:"#aaa"}}>mp4, mov, webm 등 · 20MB 이하 · 60초 이내 권장</div>
-                </label>
-              )}
-            </div>
-          )}
-
-          {/* 드라이브 링크 모드 */}
-          {inputMode==="drive" && (
-            <div style={{marginBottom:14}}>
-              {videoLoading ? (
-                <div style={{textAlign:"center",padding:"2rem",background:"#f5f5f5",borderRadius:10}}>
-                  <div style={{fontSize:20,marginBottom:8}}>🔗</div>
-                  <div style={{fontSize:13,color:"#888"}}>드라이브 영상 분석 중...</div>
-                </div>
-              ) : (
-                <>
-                  <div style={{fontSize:11,color:"#888",marginBottom:6,lineHeight:1.6,background:"#f5f5f5",padding:"8px 10px",borderRadius:7}}>
-                    💡 구글 드라이브에서 "링크가 있는 모든 사용자" 공개 설정 후 링크를 붙여넣으세요.
-                  </div>
-                  <div style={{display:"flex",gap:8}}>
-                    <input value={driveUrl} onChange={e=>setDriveUrl(e.target.value)}
-                      placeholder="https://drive.google.com/file/d/..."
-                      style={{flex:1,fontSize:12,padding:"8px 10px",border:"0.5px solid #ddd",borderRadius:7,outline:"none",fontFamily:"inherit"}}/>
-                    <button onClick={()=>extractFromDrive(driveUrl)} disabled={!driveUrl.trim()}
-                      style={{padding:"8px 14px",fontSize:12,fontWeight:500,background:driveUrl.trim()?"#111":"#ccc",color:"#fff",border:"none",borderRadius:7,cursor:driveUrl.trim()?"pointer":"not-allowed",whiteSpace:"nowrap"}}>
-                      추출
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* 대본 직접 입력 or 추출된 대본 확인/수정 */}
-          {(inputMode==="script"||(inputMode==="video"&&script)||(inputMode==="drive"&&script))&&(
+          {inputMode==="script" && (
             <div style={{marginBottom:12}}>
-              <label style={{fontSize:13,color:"#888",display:"block",marginBottom:5}}>
-                {inputMode==="script"?"대본을 입력하세요":"추출된 대본 (수정 가능)"} <span style={{color:"#A32D2D"}}>*</span>
-              </label>
+              <label style={{fontSize:13,color:"#888",display:"block",marginBottom:5}}>대본을 입력하세요 <span style={{color:"#A32D2D"}}>*</span></label>
               <textarea value={script} onChange={e=>setScript(e.target.value)} placeholder="촬영 전 대본을 붙여넣어 주세요..." style={{width:"100%",height:150,resize:"vertical",fontSize:13,lineHeight:1.6,fontFamily:"inherit",padding:10,border:"0.5px solid #ddd",borderRadius:8,outline:"none",boxSizing:"border-box"}}/>
             </div>
           )}
-          {(inputMode==="script"||(inputMode==="video"&&script)||(inputMode==="drive"&&script))&&(
+          {inputMode==="script" && (
             <div style={{marginBottom:16}}>
               <label style={{fontSize:13,color:"#888",display:"block",marginBottom:5}}>영상 내 카피 <span style={{fontSize:12,color:"#aaa"}}>(있을 시)</span></label>
               <textarea value={caption} onChange={e=>setCaption(e.target.value)} placeholder={"영상에 표시되는 자막이나 텍스트\n예) 휘어지는 타일 / 시공 시간 절반"} style={{width:"100%",height:70,resize:"vertical",fontSize:13,lineHeight:1.6,fontFamily:"inherit",padding:10,border:"0.5px solid #ddd",borderRadius:8,outline:"none",boxSizing:"border-box"}}/>
             </div>
           )}
-          {(inputMode==="script"||(inputMode==="video"&&script)||(inputMode==="drive"&&script))&&(
+          {inputMode==="script" && (
             <button onClick={runAnalysis} disabled={!script.trim()} style={{width:"100%",padding:12,fontSize:14,background:script.trim()?"#111":"#ccc",color:"#fff",border:"none",borderRadius:8,cursor:script.trim()?"pointer":"not-allowed",marginBottom:8}}>✦ AI 분석 시작</button>
           )}
           <button onClick={()=>setStep(0)} style={{width:"100%",padding:9,fontSize:12,background:"transparent",border:"0.5px solid #ddd",borderRadius:8,cursor:"pointer",color:"#aaa",marginTop:4}}>← 목적 다시 선택</button>
