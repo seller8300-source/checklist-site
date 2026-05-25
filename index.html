@@ -106,7 +106,7 @@ const EVIDENCE_ITEM_IDS = [14, 16];
 const DUAL_MODE_ITEM_IDS = [13];
 
 async function callClaude(prompt, systemMsg) {
-  const res = await fetch("/API/analysis", {
+  const res = await fetch("/api/analysis", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ prompt, systemMsg }),
