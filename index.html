@@ -294,7 +294,7 @@ aiRewrite: "지금 바로 해야 하는 이유" 딱 한 문장. 긴급성/희소
 
 ${catInstruction}
 
-자청·이상한마케팅 공식 중 하나 선택 적용:
+심리 기법 중 하나 선택 적용:
 - 금지·위협형: "이거 모르면~", "아직도 이렇게 하면 망합니다"
 - 권위 부여: "N년 현장 전문가만 아는", 배경지식 수치 활용
 - 자존심 긁기: "아는 사람은 이미 다르게 움직이고 있어요"
@@ -1350,7 +1350,7 @@ function CopyGenTab({ bgKnowledge }) {
     <div style={{padding:"1.25rem 1rem"}}>
       <div style={{marginBottom:"1.25rem"}}>
         <div style={{fontSize:16,fontWeight:600,marginBottom:4}}>카피 생성</div>
-        <div style={{fontSize:13,color:"#888"}}>자청·이상한마케팅 공식 기반으로 카피 5개를 생성해드려요</div>
+        <div style={{fontSize:13,color:"#888"}}>잘 팔리는 카피 10개 생성해드려요</div>
         {bgKnowledge && <div style={{fontSize:11,color:"#3B6D11",background:"#EAF3DE",padding:"4px 10px",borderRadius:6,marginTop:6,display:"inline-block"}}>✓ 배경지식 적용 중</div>}
       </div>
 
@@ -1361,7 +1361,7 @@ function CopyGenTab({ bgKnowledge }) {
           style={{width:"100%",height:90,resize:"vertical",fontSize:13,lineHeight:1.6,fontFamily:"inherit",padding:10,border:"0.5px solid #ddd",borderRadius:8,outline:"none",boxSizing:"border-box"}}/>
       </div>
 
-      <div style={{marginBottom:14}}>
+      <div style={{marginBottom:16}}>
         <div style={{fontSize:13,color:"#888",marginBottom:8}}>용도</div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           {usageOptions.map(o=>(
@@ -1373,22 +1373,9 @@ function CopyGenTab({ bgKnowledge }) {
         </div>
       </div>
 
-      <div style={{marginBottom:16}}>
-        <div style={{fontSize:13,color:"#888",marginBottom:8}}>카피 공식</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-          {toneOptions.map(o=>(
-            <button key={o.k} onClick={()=>setTone(o.k)}
-              style={{padding:"9px 10px",fontSize:12,border:`1.5px solid ${tone===o.k?"#111":"#e5e5e5"}`,background:tone===o.k?"#111":"#fff",color:tone===o.k?"#fff":"#555",borderRadius:8,cursor:"pointer",textAlign:"left"}}>
-              <div style={{fontWeight:500}}>{o.label}</div>
-              <div style={{fontSize:10,opacity:0.6,marginTop:2}}>{o.desc}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-
       <button onClick={generate} disabled={!input.trim()||loading}
         style={{width:"100%",padding:12,fontSize:14,fontWeight:500,background:input.trim()&&!loading?"#111":"#ccc",color:"#fff",border:"none",borderRadius:8,cursor:input.trim()&&!loading?"pointer":"not-allowed",marginBottom:16}}>
-        {loading?"카피 생성 중...":"✦ 카피 5개 생성"}
+        {loading?"카피 생성 중...":"카피 10개 생성"}
       </button>
 
       {errMsg && <div style={{padding:"10px 14px",background:"#FCEBEB",borderRadius:8,fontSize:13,color:"#A32D2D",marginBottom:12}}>⚠ {errMsg}</div>}
