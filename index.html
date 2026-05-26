@@ -3,20 +3,27 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>영상 콘텐츠 AI 검수</title>
+  <title>마케팅 AI 도구</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; }
     #root { max-width: 480px; margin: 0 auto; background: #fff; min-height: 100vh; }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script>
-    window.onerror = function(msg,url,line){document.getElementById('root').innerHTML='<div style="padding:20px;color:red">오류: '+msg+'<br>라인: '+line+'</div>';};
+    window.onerror = function(msg,url,line){
+      document.getElementById("root").innerHTML = "<div style=\"padding:20px;color:red\">오류: "+msg+"<br>라인: "+line+"</div>";
+    };
+    if (!window.storage) window.storage = {
+      get: async function(){return null;},
+      set: async function(){return null;},
+      delete: async function(){return null;}
+    };
   </script>
   <script type="text/babel">
     const { useState, useRef, useEffect } = React;
@@ -132,32 +139,35 @@ async function callClaude(prompt, systemMsg) {
 // 심리 장치: 권위/사회적증거/호감/일관성/희소성
 // ─────────────────────────────────────────────────────────────────
 
-const PSYCH_SYSTEM = `너는 시청자의 사고 프레임을 흔드는 마케팅 카피 전문가다.
-설명하지 말고 깨닫게 만들어라. 강의하지 말고 인식을 전복시켜라.
+const PSYCH_SYSTEM = `너는 자청·이상한마케팅 화법 기반의 카피라이팅 전문가다.
+설명하지 말고 깨닫게 만들어라. 강의하지 말고 행동하게 만들어라.
 
-⛔ 절대 금지 (위반 시 대본 실패):
-- 배경지식에 없는 수치/할인율/기간/프로모션을 절대 만들어내지 말 것
-- "30% 할인", "5월 한 달", "이번 달만" 같은 임의 프로모션 생성 금지
-- 사용자가 제공하지 않은 구체적 사실 주장 금지
-- 심리기법을 위해 허위 사실을 창작하는 것 절대 금지
+핵심 공식 (반드시 적용):
 
-✅ 허용된 심리 기법 (사실 기반으로만):
-1. 감정 트리거를 은근하게 건드려라 (협박/과장 금지)
-   - 손실회피: 사실에 근거한 "이거 모르면 손해"
-   - 후회: "해놓고 후회하는 포인트"
-   - 비교/열등감: "비싼데도 싸보이는 이유"
-   - 자존심/인정: "보는 사람이 딱 알아보는 포인트"
+1. [표본 넓히기] 주제를 더 넓은 모수가 관심 갖는 언어로 전환
+   - "글쓰기 팁" → "뇌가 개박살나는 행동" (글쓰기 관심자 1만 → 뇌 관심자 500만)
+   - 좁은 전문용어 대신 누구나 공감하는 감정/상황으로
 
-2. 인식 전복형 문장:
-   "사람들은 ○○라고 착각해요. 근데 그게 아닙니다."
+2. [금지·위협형] 선사시대 생존본능 자극
+   - "함부로 쓰면 안 되는", "이거 모르면 평생~", "아직도 이렇게 하면 망합니다"
+   - 위협과 이득을 동시에 → "박살나는 것 vs 확장되는 것"
 
-3. 심리적 멈춤 장치:
-   "여기서 중요한 게 뭐냐면요."
-   "대부분 이 지점에서 망합니다."
+3. [권위 부여] 신뢰+호기심 동시 자극
+   - "시간당 90만원 상담사가", "서울대 연구진이 숨긴", "16년 현장 전문가만 아는"
 
-4. 사회적 증거 + 권위:
-   배경지식에 있는 실제 수치/사례만 사용
+4. [자존심 긁기] 발끈하게 만들어 집중 유도
+   - "이거 아직도 모르세요?", "아는 사람은 이미 다르게 움직이고 있어요"
 
+5. [반응도 설계] 댓글·저장·공유 유도 장치 포함
+   - "댓글에 '확인' 남기면 자료 드릴게요", "저장해두고 나중에 써요"
+
+6. [인식 전복] 상식을 깨는 첫 문장
+   - "사람들은 ○○라고 생각하는데, 아닙니다"
+
+7. [구체적 숫자] 추상 표현 금지, 숫자로 신뢰도 상승
+   - "엄청 빠릅니다" → "기존 대비 3배 빠릅니다"
+
+⛔ 금지: 배경지식에 없는 수치 창작, AI 티 나는 문장, 교과서 톤
 반드시 순수 JSON만 출력. 코드블록 금지.`;
 
 async function regenScriptItem(item, pdLabel, catName, bgKnowledge) {
@@ -280,18 +290,20 @@ aiRewrite: "지금 바로 해야 하는 이유" 딱 한 문장. 긴급성/희소
 항목: ${item.label}
 현재 대본 해당 부분: ${item.orig && !item.orig.startsWith("(") ? item.orig : "(해당 내용 없음 — 새로 작성)"}${bgNote}
 
-[제품명 규칙 — 절대 준수]
-현재 대본에 나온 제품명/브랜드명을 파악하고, aiRewrite에서도 그 제품명만 사용.
-배경지식에 다른 제품이 있어도 완전 무시. 다른 제품명이 aiRewrite에 들어가면 실패.
+[제품명 규칙] 현재 대본 제품명만 사용. 다른 제품명 금지.
 
 ${catInstruction}
 
-⛔ 금지: 배경지식에 없는 수치/할인/기간/프로모션 절대 생성 금지.
-✅ 허용 심리기법 (하나 선택, 사실 기반으로만):
-- 손실회피 / 사회적증거(배경지식 실제 수치만) / 인식전복 / 넛지 / 권위(실제 경력/인증만)
+자청·이상한마케팅 공식 중 하나 선택 적용:
+- 금지·위협형: "이거 모르면~", "아직도 이렇게 하면 망합니다"
+- 권위 부여: "N년 현장 전문가만 아는", 배경지식 수치 활용
+- 자존심 긁기: "아는 사람은 이미 다르게 움직이고 있어요"
+- 인식 전복: "○○라고 생각하는데, 아닙니다"
+- 표본 넓히기: 좁은 전문용어 → 누구나 공감하는 감정/상황
+- 반응도 설계: 댓글·저장·공유 유도 장치
 
-aiRewrite: 60자 이내, 실제 대본에 바로 쓸 수 있는 자연스러운 한 문장.
-AI 티 금지. 현장감 있는 말투.
+⛔ 금지: 배경지식에 없는 수치/할인/프로모션 창작. AI 티. 교과서 톤.
+aiRewrite: 60자 이내, 실제 대본에 바로 쓸 수 있는 현장감 있는 구어체.
 
 JSON만 반환: {"aiRewrite":"한문장","psychTech":"기법명"}`;
 
@@ -1037,8 +1049,6 @@ function DiffView({ original, updated, changes, manualItems }) {
       ) : (
         <div style={scriptStyle}>{changes.length > 0 ? renderHighlighted(updated) : updated}</div>
       )}
-
-      )}
     </div>
   );
 }
@@ -1261,7 +1271,157 @@ function BgKnowledgeInput({ bgKnowledge, bgFileName, setBgKnowledge, setBgFileNa
   );
 }
 
+// ✅ 카피 생성 탭
+function CopyGenTab({ bgKnowledge }) {
+  const [input, setInput] = useState("");
+  const [usage, setUsage] = useState("short");
+  const [tone, setTone] = useState("threat");
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState([]);
+  const [errMsg, setErrMsg] = useState("");
+  const [copied, setCopied] = useState({});
+
+  const usageOptions = [
+    {k:"short",label:"숏폼",sub:"릴스·숏츠"},
+    {k:"long",label:"롱폼",sub:"유튜브"},
+    {k:"blog",label:"블로그",sub:"글·포스팅"},
+    {k:"web",label:"홈페이지",sub:"랜딩페이지"},
+    {k:"ad",label:"광고문구",sub:"배너·SNS"},
+  ];
+
+  const toneOptions = [
+    {k:"threat",label:"금지·위협형",desc:"모르면 손해 → 생존본능 자극"},
+    {k:"authority",label:"권위 부여",desc:"전문가·수치로 신뢰+호기심"},
+    {k:"before_after",label:"비포·애프터",desc:"위협과 이득 동시에"},
+    {k:"pride",label:"자존심 긁기",desc:"아직도? 발끈하게 만들기"},
+    {k:"flip",label:"인식 전복",desc:"상식을 깨는 첫 문장"},
+    {k:"reaction",label:"반응도 설계",desc:"댓글·저장·공유 유도 장치"},
+    {k:"broad",label:"표본 넓히기",desc:"좁은 주제 → 넓은 모수로"},
+    {k:"hook",label:"3초 후킹",desc:"의잉 포인트 + 락인 문장"},
+  ];
+
+  const toneInstructions = {
+    threat: "[금지·위협형] '함부로 쓰면 안 되는', '이거 모르면 평생~', '아직도 이렇게 하면 망합니다' 형태. 선사시대 생존본능 자극. 발끈하게 만드는 위협.",
+    authority: "[권위 부여] '16년 현장 전문가만 아는', '누적 N개 현장이 검증한' 등 신뢰+호기심 동시 자극. 배경지식 수치 반드시 활용.",
+    before_after: "[비포·애프터] 위협(하지 않으면 생기는 손해)과 이득(하면 생기는 변화)을 동시에. '뇌가 박살나는 것 vs 초확장되는 것' 형태의 대비.",
+    pride: "[자존심 긁기] '이거 아직도 모르세요?', '아는 사람은 이미 다르게 움직이고 있어요' 형태. 발끈하게 만들어 집중 유도.",
+    flip: "[인식 전복] '사람들은 ○○라고 생각하는데, 아닙니다' 형태. 상식을 뒤집는 첫 문장으로 시선 고정.",
+    reaction: "[반응도 설계] 댓글·저장·공유를 유도하는 장치 포함. '댓글에 확인 남기면 자료 드려요', '저장해두고 나중에 꺼내보세요' 형태.",
+    broad: "[표본 넓히기] 좁은 주제를 더 넓은 모수가 공감하는 언어로 전환. '글쓰기 팁'을 '뇌가 개박살나는 행동'처럼. 좁은 전문용어 대신 누구나 느끼는 감정·상황으로.",
+    hook: "[3초 후킹] 첫 문장에서 바로 시선 잡기. 의잉 포인트(뭔가 잘못 봤나 싶은 순간) 포함. 심리적 락인: 이건 끝까지 봐야 합니다 류의 시청 유지 장치.",
+  };
+
+  const usageInstructions = {
+    short: "숏폼(릴스/숏츠)용. 3초 후킹 필수. 15~30자. 끝에 행동 유도 1개.",
+    long: "유튜브 롱폼 도입부. 30~50자. 시청 유지 목적.",
+    blog: "블로그 도입부/소제목. 40~60자. 검색 의도 반영, 구어체.",
+    web: "홈페이지 헤드카피. 20~35자. 핵심 가치 한 줄. 강렬하고 명확하게.",
+    ad: "광고 배너/SNS. 10~20자. 임팩트 강하게. 클릭 유도.",
+  };
+
+  async function generate() {
+    if (!input.trim()) return;
+    setLoading(true); setErrMsg(""); setResults([]);
+    try {
+      const bgNote = bgKnowledge ? "\n\n[배경지식 - 수치 활용 필수]\n" + bgKnowledge.substring(0,800) : "";
+      const prompt = "원문: " + input + "\n용도: " + (usageInstructions[usage]||"") + bgNote + "\n\n"
+        + "[1단계] 원문에 추상적 표현(많이, 엄청, 진짜, 굉장히, 아주, 정말, 훨씬, 매우 등)이 있으면 배경지식 수치 기반으로 구체적으로 먼저 교체하라. 수치 없으면 제품 특성에 맞는 합리적 표현으로 구체화.\n"
+        + "[2단계] 구체화된 원문을 바탕으로 핵심 메시지는 유지하면서 심리 기법으로 표현 방식을 바꿔 10가지 카피를 만들어라.\n\n"
+        + "규칙:\n- 원문의 주제/제품/특징 반드시 유지\n- 각 카피 완전히 다른 각도와 기법\n- 구체적 수치/상황 묘사로 실감나게\n- AI 티 나는 문장 금지\n- 없는 사실 창작 금지\n- 현장감 있는 구어체\n\n"
+        + 'JSON만 반환: {"copies":[{"text":"카피1","tech":"적용한 기법"},{"text":"카피2","tech":"기법2"},{"text":"카피3","tech":"기법3"},{"text":"카피4","tech":"기법4"},{"text":"카피5","tech":"기법5"},{"text":"카피6","tech":"기법6"},{"text":"카피7","tech":"기법7"},{"text":"카피8","tech":"기법8"},{"text":"카피9","tech":"기법9"},{"text":"카피10","tech":"기법10"}]}';
+      const res = await callClaude(prompt, PSYCH_SYSTEM);
+      setResults(res.copies || []);
+    } catch(e) { setErrMsg("생성 오류: "+e.message); }
+    finally { setLoading(false); }
+  }
+
+  function copyText(text, idx) {
+    try {
+      const el = document.createElement('textarea');
+      el.value = text; el.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(el); el.select();
+      document.execCommand('copy'); document.body.removeChild(el);
+    } catch(e) {}
+    setCopied(p=>({...p,[idx]:true}));
+    setTimeout(()=>setCopied(p=>({...p,[idx]:false})), 1500);
+  }
+
+  return (
+    <div style={{padding:"1.25rem 1rem"}}>
+      <div style={{marginBottom:"1.25rem"}}>
+        <div style={{fontSize:16,fontWeight:600,marginBottom:4}}>카피 생성</div>
+        <div style={{fontSize:13,color:"#888"}}>자청·이상한마케팅 공식 기반으로 카피 5개를 생성해드려요</div>
+        {bgKnowledge && <div style={{fontSize:11,color:"#3B6D11",background:"#EAF3DE",padding:"4px 10px",borderRadius:6,marginTop:6,display:"inline-block"}}>✓ 배경지식 적용 중</div>}
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <label style={{fontSize:13,color:"#888",display:"block",marginBottom:5}}>원문 문장 <span style={{color:"#A32D2D"}}>*</span></label>
+        <textarea value={input} onChange={e=>setInput(e.target.value)}
+          placeholder={"예) 소프트스톤은 휘어지는 타일입니다\n예) 16년 경력 인테리어 자재 전문 스톤킴"}
+          style={{width:"100%",height:90,resize:"vertical",fontSize:13,lineHeight:1.6,fontFamily:"inherit",padding:10,border:"0.5px solid #ddd",borderRadius:8,outline:"none",boxSizing:"border-box"}}/>
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:13,color:"#888",marginBottom:8}}>용도</div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {usageOptions.map(o=>(
+            <button key={o.k} onClick={()=>setUsage(o.k)}
+              style={{padding:"7px 12px",fontSize:12,border:`1.5px solid ${usage===o.k?"#111":"#e5e5e5"}`,background:usage===o.k?"#111":"#fff",color:usage===o.k?"#fff":"#555",borderRadius:8,cursor:"pointer"}}>
+              {o.label} <span style={{fontSize:10,opacity:0.7}}>{o.sub}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:13,color:"#888",marginBottom:8}}>카피 공식</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+          {toneOptions.map(o=>(
+            <button key={o.k} onClick={()=>setTone(o.k)}
+              style={{padding:"9px 10px",fontSize:12,border:`1.5px solid ${tone===o.k?"#111":"#e5e5e5"}`,background:tone===o.k?"#111":"#fff",color:tone===o.k?"#fff":"#555",borderRadius:8,cursor:"pointer",textAlign:"left"}}>
+              <div style={{fontWeight:500}}>{o.label}</div>
+              <div style={{fontSize:10,opacity:0.6,marginTop:2}}>{o.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={generate} disabled={!input.trim()||loading}
+        style={{width:"100%",padding:12,fontSize:14,fontWeight:500,background:input.trim()&&!loading?"#111":"#ccc",color:"#fff",border:"none",borderRadius:8,cursor:input.trim()&&!loading?"pointer":"not-allowed",marginBottom:16}}>
+        {loading?"카피 생성 중...":"✦ 카피 5개 생성"}
+      </button>
+
+      {errMsg && <div style={{padding:"10px 14px",background:"#FCEBEB",borderRadius:8,fontSize:13,color:"#A32D2D",marginBottom:12}}>⚠ {errMsg}</div>}
+
+      {results.length > 0 && (
+        <div>
+          <div style={{fontSize:13,fontWeight:500,marginBottom:10,color:"#333"}}>생성된 카피 {results.length}개</div>
+          {results.map((r,i)=>(
+            <div key={i} style={{marginBottom:10,border:"1px solid #E5E7EB",borderRadius:10,overflow:"hidden"}}>
+              <div style={{padding:"8px 12px",background:"#F9FAFB",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{fontSize:11,padding:"2px 8px",background:"#111",color:"#fff",borderRadius:20}}>{r.tech}</span>
+                  <span style={{fontSize:11,color:"#888"}}>{r.reason}</span>
+                </div>
+                <button onClick={()=>copyText(r.text,i)}
+                  style={{fontSize:11,padding:"3px 10px",background:copied[i]?"#EAF3DE":"#fff",border:`0.5px solid ${copied[i]?"#3B6D11":"#ddd"}`,color:copied[i]?"#3B6D11":"#555",borderRadius:6,cursor:"pointer",fontWeight:copied[i]?500:400}}>
+                  {copied[i]?"✓ 복사됨":"복사"}
+                </button>
+              </div>
+              <div style={{padding:"12px 14px",fontSize:14,lineHeight:1.7,color:"#111"}}>{r.text}</div>
+            </div>
+          ))}
+          <button onClick={generate} disabled={loading}
+            style={{width:"100%",padding:10,fontSize:13,background:"transparent",border:"1px solid #ddd",borderRadius:8,cursor:"pointer",color:"#555",marginTop:4}}>
+            🔄 다시 생성
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 function App() {
+  const [appTab,setAppTab]=useState("checklist"); // "checklist" | "copy"
   const [step,setStep]=useState(0);
   const [purpose,setPurpose]=useState(null);
   const [inputMode,setInputMode]=useState(null);
@@ -1663,10 +1823,20 @@ JSON만 반환 (reason/aiRewrite 최대 30자):
   return (
     <><GlobalStyles/>
     <div style={{fontFamily:"-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif",maxWidth:640,margin:"0 auto",padding:"1.5rem 1rem 3rem",color:"#111",background:"#fff"}}>
-      <div style={{marginBottom:"1.5rem",paddingBottom:"1rem",borderBottom:"0.5px solid #e5e5e5"}}>
-        <div style={{fontSize:20,fontWeight:600,marginBottom:4}}>영상 콘텐츠 AI 검수</div>
-        <div style={{fontSize:13,color:"#888"}}>목적에 맞는 체크리스트로 AI가 자동 분석합니다</div>
+      <div style={{marginBottom:"1.25rem",paddingBottom:"1rem",borderBottom:"0.5px solid #e5e5e5"}}>
+        <div style={{fontSize:20,fontWeight:600,marginBottom:12}}>마케팅 AI 도구</div>
+        <div style={{display:"flex",gap:4,background:"#f5f5f5",padding:4,borderRadius:10}}>
+          {[{k:"checklist",label:"📋 영상 검수"},{k:"copy",label:"✍ 카피 생성"}].map(t=>(
+            <button key={t.k} onClick={()=>setAppTab(t.k)}
+              style={{flex:1,padding:"8px 10px",fontSize:13,fontWeight:appTab===t.k?600:400,border:"none",background:appTab===t.k?"#fff":"transparent",color:appTab===t.k?"#111":"#888",borderRadius:8,cursor:"pointer",boxShadow:appTab===t.k?"0 1px 3px rgba(0,0,0,0.1)":"none",transition:"all .15s"}}>
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {appTab==="copy" && <CopyGenTab bgKnowledge={bgKnowledge}/>}
+      {appTab==="checklist" && <div>
 
       {errMsg && <div style={{padding:"10px 14px",background:"#FCEBEB",border:"0.5px solid #FCA5A5",borderRadius:10,fontSize:13,color:"#A32D2D",marginBottom:12}}>⚠ {errMsg}</div>}
       {reanalyzing && <div style={{textAlign:"center",padding:"4rem 0"}}><div style={{fontSize:14,color:"#888",marginBottom:12}}>재분석 중...</div><div style={{width:200,height:3,background:"#f0f0f0",borderRadius:2,margin:"0 auto"}}/></div>}
@@ -1958,12 +2128,13 @@ JSON만 반환 (reason/aiRewrite 최대 30자):
           <button onClick={()=>purpose&&setStep(1)} disabled={!purpose} style={{width:"100%",padding:12,fontSize:14,background:purpose?"#111":"#ccc",color:"#fff",border:"none",borderRadius:8,cursor:purpose?"pointer":"not-allowed"}}>다음 →</button>
         </div>
       )}
+      </div>}
     </div></>
   );
 }
 
 
-    const domRoot = ReactDOM.createRoot(document.getElementById('root'));
+    const domRoot = ReactDOM.createRoot(document.getElementById("root"));
     domRoot.render(React.createElement(App));
   </script>
 </body>
